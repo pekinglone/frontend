@@ -49,7 +49,7 @@ spec:
       - name: harbor-admin
       containers:
       - name: frontend
-        image: frontend:v1.0
+        image: 192.168.10.67/library/frontend:v1.0
         ports:
           - protocol: TCP
             containerPort: 80

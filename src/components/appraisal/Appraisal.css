@@ -1,0 +1,103 @@
+.ant-page-header-heading-title{
+	font-size:30px;
+	color: #fff;
+}
+.ant-page-header-heading{
+	margin-left: 5%;
+}
+.ant-page-header{
+	color: #fff;
+    background-color: #1890ff;
+}
+.main-wrapper {
+	display:flex;
+    flex-direction: row;
+    padding: 40px 0 0;
+    background: #fff;
+	width: 90%;
+	margin: 0 auto;
+}
+.main-menu{
+	width: 20%;
+	font-size:20px;
+}
+.maintable{
+	margin-top: 2%;
+}
+.maintable button{
+	margin-top: 2%;
+	float: right;
+}
+.main-content{
+	display:flex;
+    flex-direction: column;
+	width: 80%;
+}
+.tips{
+    color: red;
+    font-size: 14px;
+}
+
+.input{
+	height: 32px;
+    padding: 6px 11px;
+    font-size: 16px;
+    margin-bottom: 30px;
+    width: 200px;
+}
+.login{
+	color: #fff;
+    background-color: #1890ff;
+    border-color: #1890ff;
+    text-shadow: 0 -1px 0 rgba(0,0,0,0.12);
+    -webkit-box-shadow: 0 2px 0 rgba(0,0,0,0.045);
+    box-shadow: 0 2px 0 rgba(0,0,0,0.045);
+    line-height: 1.5;
+    position: relative;
+    display: inline-block;
+    font-weight: 400;
+    white-space: nowrap;
+    text-align: center;
+    background-image: none;
+    border: 1px solid transparent;
+    cursor: pointer;
+    touch-action: manipulation;
+    height: 45px;
+    padding: 0 30px;
+    font-size: 20px;
+    border-radius: 4px;
+    float: right;
+}
+.admin{
+    float: right;
+    margin-right: 2%;
+    margin-top: 1%;
+}
+.container {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    text-align: center;
+    font-size: 0;
+    white-space: nowrap;
+    overflow: auto;
+}
+
+.container:after {
+    content: '';
+    display: inline-block;
+    height: 100%;
+    vertical-align: middle;
+}
+
+.dialog {
+    display: inline-block;
+    vertical-align: middle;
+    text-align: left;
+    white-space: normal;
+} 
+label{
+	font-size: 20px;
+}

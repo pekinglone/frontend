@@ -1,0 +1,132 @@
+pipeline {  
+//声明执行构建任务的 agent，指明该agnet以POD的形式运行在名称为“k8s”的kubernetes集群中，agent的标签是“jenkins-salve-pod”  
+    agent {
+        kubernetes {
+            cloud 'kubernetes'
+            label 'slave-for-frontend'
+            defaultContainer 'jnlp'
+            yaml """
+apiVersion: v1
+kind: Pod
+metadata:
+  name: jenkins-salve
+  labels:
+    app: jenkins-slave
+spec:
+  securityContext:
+    runAsUser: 0
+    fsGroup: 0
+  hostAliases:
+  - ip: 10.225.62.209
+    hostnames:
+    - harbor.pepris.com
+  - ip: 10.225.62.200
+    hostnames:
+    - rancher.pepris.com
+  - ip: 10.225.1.53
+    hostnames:
+    - ranchertest.pepris.com
+  - ip: 10.225.62.215
+    hostnames:
+    - gitlab.pepris.com
+  containers:
+  - name: jnlp
+    image: harbor.pepris.com/cicd/jnlp-slave:4.0.1-1
+    imagePullPolicy: IfNotPresent
+    lifecycle:
+      postStart:
+        exec:
+          command: ['git', 'config', '--global', 'http.sslVerify', 'false']
+  - name: node  
+    image: harbor.pepris.com/cicd/node:10.15.3
+    imagePullPolicy: IfNotPresent
+    command: ["/bin/sh","-c"]
+    args: ["while true; do sleep 1; done;"]
+    volumeMounts:
+    - name: node-local-repository  
+      mountPath: /root/.npm
+  - name: docker
+    image: harbor.pepris.com/cicd/docker:19.03.8
+    imagePullPolicy: IfNotPresent
+    command: ["/bin/sh","-c"]
+    args: ["while true; do sleep 1; done;"]
+    volumeMounts:
+    - name: jenkinsdocker
+      mountPath: /var/run/docker.sock
+  volumes:
+  - name: jenkinsdocker
+    hostPath:
+      path: /var/run/docker.sock
+      type: Socket
+  - name: node-local-repository
+    persistentVolumeClaim:
+      claimName: node-local-repository
+  serviceAccount: jenkins-admin
+  imagePullSecrets:
+  - name: harbor
+    """
+        }
+    }  
+
+    environment{
+        PROJECT_NAME = "assessmentsystem" 
+        APP_NAME = "frontend"
+        DOCKER_REGISTRY = "harbor.pepris.com"
+        IMAGE_NAME_WITH_TAG =  "${DOCKER_REGISTRY}/${PROJECT_NAME}/${APP_NAME}:v1.0.$BUILD_ID"
+    }
+  
+    stages {
+        stage('替换变量') {
+            steps {
+                container('jnlp') {
+                    //sh 'printenv'
+                    sh 'sed -i s/"TAG_ID"/"${BUILD_ID}"/g ./configfiles/Template.yaml'
+                }
+            }
+        } 
+         stage('静态检查') {
+             steps {  
+                 container('jnlp') {
+                     script{
+                         def sonarHome = tool name: 'myscanner', type:'hudson.plugins.sonar.SonarRunnerInstallation'
+                         withSonarQubeEnv('sonarqube') {
+                           sh "${sonarHome}/bin/sonar-scanner -Dsonar.host.url=${SONAR_HOST_URL} -Dsonar.login=${SONAR_AUTH_TOKEN}"
+                         }
+                         timeout(10) { 
+                     //利用sonar webhook功能通知pipeline代码检测结果，未通过质量阈，pipeline将会fail
+                         def qg = waitForQualityGate() 
+                             if (qg.status != 'OK') {
+                                 error "未通过Sonarqube的代码质量阈检查，请及时修改！failure: ${qg.status}"
+                             }
+                         }
+                     }
+                 }
+             }
+         }     
+        stage('代码编译') {
+            steps {  
+                container('node') {
+                    sh ' npm install --registry=https://registry.npm.taobao.org'
+                    sh ' npm run build '
+                }
+            }
+        }
+        stage('打包镜像') {
+            steps {
+                container('docker') {
+                    withDockerRegistry(credentialsId: 'harbor-admin', url: 'https://harbor.pepris.com') {
+                        sh 'docker build -t ${IMAGE_NAME_WITH_TAG} -f configfiles/Dockerfile .'
+                        sh 'docker push ${IMAGE_NAME_WITH_TAG}'
+                    }
+                }
+            }
+        }
+        stage('部署到 k8s') {
+            steps {
+                container('jnlp') {
+                    kubernetesDeploy configs: 'configfiles/Template.yaml', kubeConfig: [path: ''], kubeconfigId: 'pepristest', secretName: '', ssh: [sshCredentialsId: '*', sshServer: ''], textCredentials: [certificateAuthorityData: '', clientCertificateData: '', clientKeyData: '', serverUrl: 'https://']
+                }
+            }
+        }
+    }
+}
